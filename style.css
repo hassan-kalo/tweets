@@ -1,0 +1,14 @@
+body{
+    background-color: black;
+    color: lightblue;
+}
+.input-container{
+    display: flex;
+    flex-direction: column;
+    max-width: 40%;
+    margin: auto;
+}
+
+#input-tweet{
+    min-height: 200px;
+}
