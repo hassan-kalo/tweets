@@ -1,81 +1,100 @@
-const inputCategory = document.getElementById('input-category');
-const inputTweet = document.getElementById('input-tweet');
-const saveBtn = document.getElementById('input-save-btn');
-// Open a connection to the database
-let request = indexedDB.open("tweetsDB", 1);
+const inputCategory = document.getElementById("input-category");
+const inputTweet = document.getElementById("input-tweet");
+const saveBtn = document.getElementById("input-save-btn");
+const checkboxesContainer = document.getElementById("checkboxes-container");
+const tweetsContainer = document.querySelector(".tweets-container");
+let previousInputCategory = "";
+let previousInputTweet = "";
+//open a connection to tweetsDB (if doesn't exist create and open)
+const initDB = window.indexedDB.open("tweetsDB", 1);
 
-// Handle database creation or upgrade
-request.onupgradeneeded = function(event) {
-// The code inside here is excuted when the second parameter of .open() is changed
-  let db = event.target.result;
+initDB.addEventListener("upgradeneeded", function(e){
+    let objectStore = e.target.result.createObjectStore('tweets', { keyPath: "id", autoIncrement: true });
+    // first parameter is name , the second is keypath
+    objectStore.createIndex("category", "category", { unique: false });
+    objectStore.createIndex("category_tweet", ["category", "tweet"], { unique: true });
+});
 
-// Perform database schema upgrades here
-  // Create an object store for tweets
-  let objectStore = db.createObjectStore("tweets", { keyPath: "id", autoIncrement: true });
+initDB.addEventListener("error", function(event) {
+    console.log("Error opening database:", event.target.error);
+});
+initDB.addEventListener("success",initDBSuccess)
 
-  // Create an index for the "category" property
-  objectStore.createIndex("category", "category", { unique: false });
-};
-
-request.onerror = function(event) {
-    console.log("Error opening database");
-};
-
-// Handle successful database connection
-request.onsuccess = function(event) {
-  let db = event.target.result;
-
-  // Save data to object store when "Save" button is clicked
-  saveBtn.addEventListener('click', saveData)
-
-
-
-  ////////////////////////////
-    // Retrieve data from object store and group by category
-/*     let objectStore = db.transaction("tweets").objectStore("tweets");
-    let getAllRequest = objectStore.getAll();
-  
-    getAllRequest.onsuccess = function(event) {
-      let tweets = event.target.result;
-  
-      // Group tweets by category
-      let groupedTweets = {};
-      for (let tweet of tweets) {
-        if (!groupedTweets[tweet.category]) {
-          groupedTweets[tweet.category] = [];
+function initDBSuccess(e){
+    let result = e.target.result
+    saveBtn.addEventListener('click', function(){
+        if(/^(|\s+)$/.test(inputCategory.value) || /^(|\s+)$/.test(inputTweet.value)){
+            alert('all fields are required')
         }
-        groupedTweets[tweet.category].push(tweet.content);
-      }
-  
-      console.log("Data in database:", groupedTweets);
-    }; */
-  ////////////////////////////
-    function saveData(){
-        let transaction = db.transaction(["tweets"], "readwrite");
-        let objectStore = transaction.objectStore("tweets");
+        else{
+            const tx = result.transaction(['tweets'], 'readwrite');
+            const request = tx.objectStore('tweets').index('category_tweet').openCursor(IDBKeyRange.only([inputCategory.value, inputTweet.value]));
+            request.onsuccess = (event) => {
+                const result = event.target.result;
+                if (result) {
+                  alert("An object with the same category and tweet already exists!");
+                } 
+                else {
+                    tx.objectStore('tweets').add({
+                        category: inputCategory.value, 
+                        tweet: inputTweet.value,
+                    })
+        
+                    location.reload() 
+                }
+    
+            }
+            request.onerror = (event) => {
+                console.error("Error getting tweet:", event.target.error);
+            };
+        }
 
-        let tweet = {
-          cate: inputCategory.value,
-          content: inputTweet.value
-        };
+    })
+    
+        //const tx = result.transaction('tweets', 'readonly');
+        //const store = tx.objectStore('tweets');
+        //const index = store.index('category'); 
+        const index = result.transaction('tweets', 'readonly').objectStore('tweets').index('category');
+        console.log(index)
+        const categoryRequest = index.getAll()
+        categoryRequest.onsuccess = (e)=>{
+            console.log(e.target.result)
+            const categories = [...new Set(e.target.result.map(element => element.category))];
+            console.log(categories)
+            categories.forEach((element)=>{
+                console.log(element)
+                const request = index.openCursor(IDBKeyRange.only(element));
+                let titleMissing = true;
+                const div = document.createElement('div')
+                div.id = element
+                div.classList.add('collection')
+                request.onsuccess = (event) => {
+                      const cursor = event.target.result;
+                      if (cursor) {
+                        //console.log(cursor);
+                        //console.log(cursor.value.tweet);
+                        //console.log(cursor.value.id);
+                        if(titleMissing){           
+                            const h3 = document.createElement('h3')
+                            h3.innerText = cursor.value.category
+                            div.append(h3)           
+                            titleMissing = false
+                        }
+                        const p = document.createElement('p')
+                        p.innerText = cursor.value.tweet
+                        div.append(p)
+                        cursor.continue();
+                    }
+                    
+                };
+        
+                request.onerror = (event) => {
+                    div.innerText = "Error retrieving tweets"
+                  console.log("Error retrieving tweets:", event.target.error);
+                };
+                tweetsContainer.append(div)
+            })
+        }
 
-        let request = objectStore.add(tweet);
-
-        request.onsuccess = function(event) {
-          console.log("Tweet saved to database");
-        };
-
-        request.onerror = function(event) {
-          console.log("Error saving tweet to database");
-        };
-
-        transaction.oncomplete = function(event) {
-          inputCategory.value = "";
-          inputTweet.value = "";
-          console.log("Transaction completed");
-        };
-
-    }
-};
-
+}
 

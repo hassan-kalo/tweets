@@ -5,10 +5,20 @@ body{
 .input-container{
     display: flex;
     flex-direction: column;
-    max-width: 40%;
+    max-width: 35%;
     margin: auto;
 }
 
 #input-tweet{
     min-height: 200px;
 }
+
+.tweets-container{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min-content, 200px));
+    padding: .5%;
+}
+
+
+
+
