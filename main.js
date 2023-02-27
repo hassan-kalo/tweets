@@ -28,13 +28,17 @@ function initDBSuccess(e){
         }
         else{
             const tx = result.transaction(['tweets'], 'readwrite');
-            const request = tx.objectStore('tweets').index('category_tweet').openCursor(IDBKeyRange.only([inputCategory.value, inputTweet.value]));
+            //const request = tx.objectStore('tweets').index('category_tweet').openCursor(IDBKeyRange.only([inputCategory.value, inputTweet.value]));
+            const request = tx.objectStore('tweets').index('category_tweet').get([inputCategory.value, inputTweet.value]);;
             request.onsuccess = (event) => {
                 const result = event.target.result;
+                // result is either an object or undefined
                 if (result) {
+                    console.log(result)
                   alert("An object with the same category and tweet already exists!");
                 } 
                 else {
+                    console.log(result)
                     tx.objectStore('tweets').add({
                         category: inputCategory.value, 
                         tweet: inputTweet.value,
